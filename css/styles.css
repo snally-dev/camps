@@ -333,19 +333,19 @@ p {
 
 #results {
   display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-1);
+  gap: 0.65rem;
+  margin-top: 0.35rem;
 }
 
 .pace-card {
   --reveal-delay: 0ms;
   border-radius: var(--radius);
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--fire-soft) 38%, transparent), transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, var(--fire-soft) 18%, transparent), transparent 58%),
     var(--surface-glass);
   box-shadow:
-    0 12px 28px rgba(15, 29, 52, 0.14),
-    0 0 0 1px color-mix(in srgb, var(--fire) 28%, transparent);
+    0 8px 20px rgba(15, 29, 52, 0.09),
+    0 0 0 1px color-mix(in srgb, var(--fire) 18%, transparent);
   padding: var(--space-3);
 }
 
@@ -380,7 +380,7 @@ p {
   overflow: hidden;
   border-radius: 999px;
   background: color-mix(in srgb, var(--border) 72%, transparent);
-  margin: var(--space-3) 0;
+  margin: 0.4rem 0 0.75rem;
 }
 
 .progress-fill {
@@ -422,9 +422,9 @@ p {
 .export-panel {
   display: grid;
   justify-items: stretch;
-  gap: var(--space-2);
+  gap: 0.35rem;
   width: 100%;
-  margin-block: 0;
+  margin-top: -0.2rem;
 }
 
 .export-button {
@@ -447,12 +447,7 @@ p {
   filter: brightness(1.03);
 }
 
-.export-button:active {
-  transform: translateY(1px);
-}
-
 .copy-status {
-  min-height: 1.35em;
   margin: 0;
   color: var(--success);
   font-size: 0.95rem;
@@ -460,10 +455,15 @@ p {
   text-align: center;
 }
 
+.copy-status:not(:empty) {
+  min-height: 1.25em;
+  padding-top: 0.05rem;
+}
+
 .divider {
   height: 1px;
   background: var(--border);
-  margin: var(--space-1) 0 0;
+  margin: 0.05rem 0 0;
 }
 
 .milestone-heading {
@@ -544,11 +544,13 @@ p {
 }
 
 .milestone-card.is-complete {
-  border-color: color-mix(in srgb, var(--success) 50%, var(--border));
+  border-color: color-mix(in srgb, var(--success) 38%, var(--border));
+  background: color-mix(in srgb, var(--success) 7%, var(--surface-card));
 }
 
 .milestone-card.is-complete::before {
   background: var(--success);
+  opacity: 0.72;
 }
 
 .milestone-card.is-complete .milestone-date {
@@ -738,5 +740,5 @@ p {
 }
 
 .is-hidden {
-  display: none;
+  display: none !important;
 }
