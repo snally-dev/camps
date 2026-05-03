@@ -143,12 +143,14 @@ function initInputBounds() {
 
 function saveCurrentCount() {
   try {
-    if (currentCountEl.value === "") {
+    const currentCampCount = Number(currentCountEl.value);
+
+    if (!Number.isInteger(currentCampCount) || currentCampCount <= 0) {
       localStorage.removeItem(STORAGE_KEY);
       return;
     }
 
-    localStorage.setItem(STORAGE_KEY, currentCountEl.value);
+    localStorage.setItem(STORAGE_KEY, String(currentCampCount));
   } catch {
     // Storage can be unavailable in some locked-down/private browser modes.
   }
@@ -163,8 +165,10 @@ function loadSavedCount() {
     return;
   }
 
-  if (saved !== null) {
-    currentCountEl.value = saved;
+  const savedCount = Number(saved);
+
+  if (Number.isInteger(savedCount) && savedCount > 0 && savedCount <= daysElapsedInYear()) {
+    currentCountEl.value = String(savedCount);
   }
 }
 
@@ -259,6 +263,11 @@ function calculateAndRender() {
     return;
   }
 
+  if (currentCampCount === 0) {
+    hideResults();
+    return;
+  }
+
   if (currentCampCount > daysElapsedThisYear) {
     hideResults();
     setCountError(
@@ -318,17 +327,6 @@ async function exportProgress() {
   }
 }
 
-function registerServiceWorker() {
-  const canUseServiceWorker =
-    window.location.protocol === "https:" && window.location.pathname.startsWith("/camps/");
-
-  if (!canUseServiceWorker || !("serviceWorker" in navigator)) return;
-
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/camps/sw.js", { scope: "/camps/" }).catch(() => {});
-  });
-}
-
 function init() {
   initInputBounds();
   loadSavedCount();
@@ -360,7 +358,6 @@ function init() {
   });
 
   installIosKeyboardFocusAssist();
-  registerServiceWorker();
 }
 
 init();
