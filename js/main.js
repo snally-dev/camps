@@ -14,8 +14,8 @@ const countErrorEl = document.getElementById("count-error");
 const countUpdateFeedbackEl = document.getElementById("count-update-feedback");
 const resultsEl = document.getElementById("results");
 const incrementButton = document.getElementById("increment");
-const shareButton = document.getElementById("share-progress");
-const shareStatusEl = document.getElementById("share-status");
+const exportButton = document.getElementById("copy-progress");
+const copyStatusEl = document.getElementById("copy-status");
 const resultsSummaryEl = document.getElementById("results-summary");
 const progressTrackEl = document.querySelector(".progress-track");
 const progressFillEl = document.getElementById("progress-fill");
@@ -32,8 +32,8 @@ const milestoneEls = MILESTONES.map((milestone) => ({
   date: document.getElementById(`m-${milestone}-date`),
 }));
 
-let currentShareText = "";
-let shareStatusTimer = 0;
+let currentExportText = "";
+let copyStatusTimer = 0;
 let countUpdateFeedbackTimer = 0;
 let hasShownResults = false;
 let ignoreNextIncrementClick = false;
@@ -69,7 +69,7 @@ function buildEmojiProgressBar(currentCampCount) {
   return `${"🟩".repeat(filledBlocks)}${"⬜".repeat(totalBlocks - filledBlocks)}`;
 }
 
-function buildShareText({ currentCampCount, nextMilestone, campsRemainingToNext }) {
+function buildExportText({ currentCampCount, nextMilestone, campsRemainingToNext }) {
   const percent = Math.round((currentCampCount / MAIN_GOAL) * 100);
 
   const lines = [
@@ -94,14 +94,14 @@ function setText(el, value) {
   if (el) el.textContent = value;
 }
 
-function setShareStatus(message) {
-  window.clearTimeout(shareStatusTimer);
-  shareStatusEl.textContent = message;
+function setCopyStatus(message) {
+  window.clearTimeout(copyStatusTimer);
+  copyStatusEl.textContent = message;
 
   if (!message) return;
 
-  shareStatusTimer = window.setTimeout(() => {
-    shareStatusEl.textContent = "";
+  copyStatusTimer = window.setTimeout(() => {
+    copyStatusEl.textContent = "";
   }, 2600);
 }
 
@@ -132,8 +132,8 @@ function resetRevealAnimation() {
 }
 
 function hideResults() {
-  resultsEl.hidden = true;
-  currentShareText = "";
+  resultsEl.classList.add("is-hidden");
+  currentExportText = "";
   hasShownResults = false;
 }
 
@@ -221,7 +221,7 @@ function renderResults(currentCampCount) {
 
   renderMilestones(result.milestoneDates, currentCampCount);
 
-  currentShareText = buildShareText({
+  currentExportText = buildExportText({
     currentCampCount,
     nextMilestone,
     campsRemainingToNext,
@@ -231,8 +231,9 @@ function renderResults(currentCampCount) {
     progressPercent,
   )} percent of ${MAIN_GOAL}. Projected year-end total ${endOfYearProjection}.`;
 
-  const shouldReveal = resultsEl.hidden || !hasShownResults;
-  resultsEl.hidden = false;
+  const shouldReveal = resultsEl.classList.contains("is-hidden") || !hasShownResults;
+
+  resultsEl.classList.remove("is-hidden");
 
   if (shouldReveal) {
     resetRevealAnimation();
@@ -245,7 +246,7 @@ function calculateAndRender() {
   const currentCampCount = raw === "" ? NaN : Number(raw);
   const daysElapsedThisYear = daysElapsedInYear();
 
-  setShareStatus("");
+  setCopyStatus("");
   setCountError("");
 
   if (!Number.isInteger(currentCampCount) || currentCampCount < 0) {
@@ -290,29 +291,29 @@ function incrementCurrentCount() {
   }
 }
 
-async function copyShareText() {
-  await navigator.clipboard.writeText(currentShareText);
-  setShareStatus("Progress copied.");
+async function copyExportText() {
+  await navigator.clipboard.writeText(currentExportText);
+  setCopyStatus("Progress copied.");
 }
 
-async function shareProgress() {
-  if (!currentShareText) return;
+async function exportProgress() {
+  if (!currentExportText) return;
 
   try {
     if (navigator.share) {
-      await navigator.share({ text: currentShareText });
-      setShareStatus("Progress shared.");
+      await navigator.share({ text: currentExportText });
+      setCopyStatus("Progress shared.");
       return;
     }
 
-    await copyShareText();
+    await copyExportText();
   } catch (error) {
     if (error?.name === "AbortError") return;
 
     try {
-      await copyShareText();
+      await copyExportText();
     } catch {
-      setShareStatus("Sharing is unavailable in this browser.");
+      setCopyStatus("Export is unavailable in this browser.");
     }
   }
 }
@@ -334,7 +335,7 @@ function init() {
   calculateAndRender();
 
   currentCountEl.addEventListener("input", handleCountInput);
-  shareButton.addEventListener("click", shareProgress);
+  exportButton.addEventListener("click", exportProgress);
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
