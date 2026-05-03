@@ -1,56 +1,99 @@
-# Camp Milestones Calculator
+# Camps
 
-A tiny static web app that projects Burn Boot Camp Keep Moving Club milestone dates (50/100/150/200/250) and an end-of-year projection based on your current camp count and start date in the current year.
+A small, mobile-first web app for checking annual camp progress toward a 250-camp year.
 
-## What It Does
+Enter the number of camps completed this year and the app shows current progress, projected milestone dates, year-end pace, and a share sheet / clipboard snapshot.
 
-- Projects the calendar dates when you are likely to hit each milestone.
-- Calculates an average camps-per-week pace based on your year-to-date attendance.
-- Estimates your total camps by Dec 31 if you continue at the same pace.
+## Tech
 
-## How The Math Works
+- Static HTML, CSS, and JavaScript modules
+- No build step
+- No dependencies
+- No backend, accounts, analytics, or stored user data
 
-Assumptions (also enforced in the UI):
+## Run Locally
 
-- Milestones reset on Jan 1.
-- Max 1 camp per day.
-- Current camp count includes today if you already attended a camp today.
-- Start date is your first camp of the current year.
+From the repo root:
 
-Calculations:
+```sh
+python3 -m http.server 8000
+```
 
-- Elapsed days are counted inclusively (Jan 1 to Jan 1 = 1 day).
-- Daily rate = currentCount / elapsedDays, capped at 1 camp/day.
-- Average per week = dailyRate \* 7.
-- Milestone date:
-  - If already reached, back-calculate the date using the same daily rate.
-  - If not reached, project forward from today using the daily rate.
-- End-of-year projection = currentCount + (dailyRate \* remainingDaysInYear), rounded down.
+Then open:
 
-All date math is done in date-only local time to avoid DST drift.
+```text
+http://localhost:8000/
+```
 
-## Inputs / Outputs
+For a closer deployment-path check, serve the repo from a `/camps/` mount or copy the files into a local `camps/` directory and open:
 
-Inputs:
+```text
+http://localhost:8000/camps/
+```
 
-- Current camps attended (number)
-- Start date (date within the current year)
+## Build
 
-Outputs:
+There is no production build command. The files in this repo are the deployable app.
 
-- Average camps per week
-- Projected milestone dates for 50/100/150/200/250
-- Projected end-of-year total
+Useful validation checks:
 
-## Project Structure
+```sh
+node --check js/config.js
+node --check js/calculator.js
+node --check js/main.js
+node --check sw.js
+```
 
-- `index.html` — Markup and structure
-- `styles.css` — Styling
-- `main.js` — DOM wiring and UI updates
-- `calculator.js` — Date and projection math
+## Deployment
 
-## Known Limitations / Disclaimers
+The production app is deployed with GitHub Pages and served at:
 
-- Not an official Burn Boot Camp tool.
-- Projections assume a consistent pace; real attendance may vary.
-- The calculator does not account for skipped weeks, holidays, or multiple camps in a day (max 1/day).
+```text
+https://snally.com/camps/
+```
+
+The public link may be shared without the trailing slash as `https://snally.com/camps`; GitHub Pages should normalize that directory URL to `/camps/`.
+
+PWA paths assume that base path:
+
+- Manifest: `/camps/manifest.webmanifest`
+- Start URL: `/camps/`
+- Scope: `/camps/`
+- Service worker: `/camps/sw.js`
+- Icons: `/camps/icons/`
+
+Avoid changing these to root-relative `/` paths unless the app is moved off the `/camps/` subdirectory.
+
+The repo includes `.nojekyll` so GitHub Pages serves the static files directly without Jekyll processing. Do not add a `CNAME` file here unless this repo is intended to own the root custom domain; this app is designed to live as the `/camps/` path.
+
+## PWA / Add to Home Screen
+
+The app is configured as a lightweight PWA. On iPhone Safari, use Share -> Add to Home Screen. The home-screen name is `Camps`.
+
+The service worker is intentionally simple. It precaches the app shell and static assets, uses network-first handling for page navigation, and falls back to the cached app shell when offline.
+
+## Calculation Assumptions
+
+- The tracking year starts on January 1 and ends on December 31 in the user's local calendar.
+- The entered count is camps completed so far this year.
+- If the user already went today, today's camp should be included.
+- Pace is calculated from elapsed days in the year, including today.
+- Pace is capped at 1 camp per day.
+- Milestone projections use the current pace to estimate future dates.
+- Counts above the number of elapsed days in the year are rejected.
+
+## Repo Structure
+
+```text
+index.html
+css/styles.css
+js/config.js
+js/calculator.js
+js/main.js
+manifest.webmanifest
+sw.js
+assets/
+icons/
+```
+
+This layout is intentionally flat because the app is small. Add structure only when it removes real duplication or clarifies behavior.
