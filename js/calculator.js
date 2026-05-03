@@ -1,5 +1,6 @@
+import { MILESTONES } from "./config.js";
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const TARGETS = [50, 100, 150, 200, 250];
 
 function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n));
@@ -11,9 +12,7 @@ function clamp(n, min, max) {
  */
 function dayNumberLocal(date) {
   const d = date instanceof Date ? date : new Date(date);
-  return Math.floor(
-    Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / MS_PER_DAY,
-  );
+  return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / MS_PER_DAY);
 }
 
 function startOfDayLocal(date) {
@@ -24,6 +23,16 @@ function startOfDayLocal(date) {
 export function daysInYear(year) {
   // Feb 29 exists if leap year
   return new Date(year, 1, 29).getMonth() === 1 ? 366 : 365;
+}
+
+export function startOfYearLocal(today = new Date()) {
+  const now = startOfDayLocal(today);
+  return new Date(now.getFullYear(), 0, 1);
+}
+
+export function daysElapsedInYear(today = new Date()) {
+  const now = startOfDayLocal(today);
+  return inclusiveElapsedDays(startOfYearLocal(now), now);
 }
 
 function endOfYearLocal(year) {
@@ -37,7 +46,7 @@ function addDaysLocal(date, days) {
 }
 
 function emptyMilestoneDates() {
-  return Object.fromEntries(TARGETS.map((target) => [target, null]));
+  return Object.fromEntries(MILESTONES.map((target) => [target, null]));
 }
 
 function inclusiveElapsedDays(startDate, today) {
@@ -48,16 +57,12 @@ function inclusiveElapsedDays(startDate, today) {
 }
 
 /**
- * Daily rate is capped at 1 camp/day (Burn counts max 1/day).
+ * Daily rate is capped at 1 camp/day.
  */
 function ratePerDay(currentCount, startDate, today) {
   const elapsedDays = inclusiveElapsedDays(startDate, today);
   const raw = currentCount / elapsedDays;
   return clamp(raw, 0, 1);
-}
-
-function averagePerWeekFromDaily(dailyRate) {
-  return dailyRate * 7;
 }
 
 function milestoneDate({ target, currentCount, dailyRate, startDate, today }) {
@@ -75,8 +80,7 @@ function milestoneDate({ target, currentCount, dailyRate, startDate, today }) {
     const reached = addDaysLocal(startDate, Math.max(0, daysFromStart));
 
     // Guardrails: keep within the same year and not after today.
-    if (dayNumberLocal(reached) > dayNumberLocal(today))
-      return startOfDayLocal(today);
+    if (dayNumberLocal(reached) > dayNumberLocal(today)) return startOfDayLocal(today);
     if (dayNumberLocal(reached) > eoyN) return null;
     return reached;
   }
@@ -103,7 +107,7 @@ function endOfYearProjection(currentCount, dailyRate, today) {
   const daysRemaining = Math.max(0, eoyN - todayN);
 
   const projected = currentCount + dailyRate * daysRemaining;
-  return Math.floor(projected);
+  return clamp(Math.floor(projected), 0, daysInYear(y));
 }
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
@@ -116,30 +120,21 @@ export function formatDate(date) {
   return DATE_FMT.format(date);
 }
 
-export function calculateMilestones(
-  currentCount,
-  startDate,
-  today = new Date(),
-) {
+export function calculateMilestones(currentCount, startDate, today = new Date()) {
   const start = startOfDayLocal(startDate);
   const now = startOfDayLocal(today);
 
-  if (
-    start.getFullYear() !== now.getFullYear() ||
-    dayNumberLocal(start) > dayNumberLocal(now)
-  ) {
+  if (start.getFullYear() !== now.getFullYear() || dayNumberLocal(start) > dayNumberLocal(now)) {
     return {
-      averagePerWeek: NaN,
       milestoneDates: emptyMilestoneDates(),
       endOfYearProjection: NaN,
     };
   }
 
   const dailyRate = ratePerDay(currentCount, start, now);
-  const avgPerWeek = averagePerWeekFromDaily(dailyRate);
 
   const milestoneDates = Object.fromEntries(
-    TARGETS.map((target) => [
+    MILESTONES.map((target) => [
       target,
       milestoneDate({
         target,
@@ -152,7 +147,6 @@ export function calculateMilestones(
   );
 
   return {
-    averagePerWeek: avgPerWeek,
     milestoneDates,
     endOfYearProjection: endOfYearProjection(currentCount, dailyRate, now),
   };
