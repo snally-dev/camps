@@ -2,17 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover"
-    />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="format-detection" content="telephone=no" />
     <title>Camp Milestones</title>
     <meta
       name="description"
-      content="Calculate projected camp milestone dates for the current year."
+      content="See your camp pace, projected milestones, and shareable progress for the year."
     />
     <link rel="stylesheet" href="css/styles.css" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/icon-180.png" />
+    <link rel="icon" href="favicon.ico" />
+    <meta name="theme-color" content="#f0f4f8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0c172a" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-title" content="Camps" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   </head>
   <body>
     <main class="app-shell">
@@ -20,96 +26,129 @@
         <img
           class="logo"
           src="assets/camp-milestones-logo.png"
-          alt="Camp Milestones Logo"
-          height="100"
+          alt="Camp Milestones"
+          width="600"
+          height="268"
         />
         <div class="hero-copy stack">
-          <p class="hero-subtitle">
-            Track your pace and see when you will hit each milestone this year.
-          </p>
+          <h1 class="visually-hidden">Camp Milestones</h1>
+          <p class="hero-subtitle">Track your camps and milestones.</p>
         </div>
       </header>
 
-      <form id="milestone-form" class="stack" novalidate>
-        <div class="field stack">
-          <label for="current-count">Current Camps:</label>
-          <input
-            type="number"
-            id="current-count"
-            name="current-count"
-            min="0"
-            max="365"
-            step="1"
-            inputmode="numeric"
-            enterkeyhint="done"
-            aria-describedby="count-hint"
-            required
-          />
-          <p class="hint" id="count-hint">
-            Count includes today if you already attended a camp today.
-          </p>
-        </div>
+      <form id="milestone-form" class="camp-entry" novalidate>
+        <label class="camp-entry__label" for="current-count">Your camps</label>
 
-        <div class="field stack">
-          <label for="start-date">Start Date:</label>
-          <input
-            type="date"
-            id="start-date"
-            name="start-date"
-            aria-describedby="date-hint"
-            required
-          />
-          <p class="hint" id="date-hint">
-            Start date is your first camp of the current year (milestones reset
-            Jan 1).
-          </p>
-        </div>
+        <input
+          class="camp-entry__input"
+          type="number"
+          id="current-count"
+          name="current-count"
+          min="0"
+          max="365"
+          step="1"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          enterkeyhint="done"
+          autocomplete="off"
+          placeholder="0"
+          aria-describedby="count-error"
+          aria-errormessage="count-error"
+        />
 
-        <div class="form-footer stack">
-          <button type="reset">Reset</button>
-          <p class="hint">Updates automatically.</p>
-        </div>
+        <p class="field-error" id="count-error" aria-live="polite"></p>
+        <button type="button" id="increment" class="increment-btn" aria-label="Add one camp">
+          +1
+        </button>
+        <p class="count-update-feedback" id="count-update-feedback" aria-hidden="true"></p>
       </form>
 
-      <section id="results" hidden aria-live="polite" aria-atomic="true">
-        <div class="summary-metrics">
-          <div>
-            <h2>Average Per Week</h2>
-            <p id="average-per-week">—</p>
+      <section id="results" hidden>
+        <p id="results-summary" class="visually-hidden" role="status" aria-live="polite"></p>
+        <div class="pace-card reveal-item" data-reveal>
+          <div class="pace-card-header">
+            <div>
+              <p class="eyebrow">Progress</p>
+              <h2>Annual Camp Progress</h2>
+            </div>
+            <p class="pace-count"><span id="pace-current-camps">—</span>/250</p>
           </div>
-          <div>
-            <h2>End of Year Projection</h2>
-            <p id="end-of-year-projection">—</p>
+
+          <div
+            class="progress-track"
+            role="progressbar"
+            aria-label="250 camp progress"
+            aria-valuemin="0"
+            aria-valuemax="250"
+            aria-valuenow="0"
+          >
+            <div id="progress-fill" class="progress-fill"></div>
           </div>
+
+          <div class="pace-metrics">
+            <div>
+              <span>Progress</span>
+              <strong id="progress-percent">—</strong>
+            </div>
+            <div>
+              <span>To 250</span>
+              <strong id="remaining-to-250">—</strong>
+            </div>
+            <div>
+              <span>Projected</span>
+              <strong id="projected-year-end-camps">—</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="share-action reveal-item" data-reveal>
+          <button
+            type="button"
+            id="share-progress"
+            class="share-button"
+            aria-label="Share your camp progress"
+          >
+            Share
+          </button>
+          <p id="share-status" class="share-status" aria-live="polite"></p>
         </div>
 
         <div class="divider"></div>
-        <h2>Milestone Dates</h2>
+        <h2 class="milestone-heading">Milestone Path</h2>
 
         <div class="milestone-grid">
-          <article class="milestone-card" data-milestone="50">
+          <article class="milestone-card reveal-item" data-milestone="50" data-reveal>
             <h3>50</h3>
-            <p class="milestone-date" id="m-50">—</p>
+            <p class="milestone-remaining" id="m-50-remaining">—</p>
+            <p class="milestone-date" id="m-50-date">—</p>
           </article>
 
-          <article class="milestone-card" data-milestone="100">
+          <article class="milestone-card reveal-item" data-milestone="100" data-reveal>
             <h3>100</h3>
-            <p class="milestone-date" id="m-100">—</p>
+            <p class="milestone-remaining" id="m-100-remaining">—</p>
+            <p class="milestone-date" id="m-100-date">—</p>
           </article>
 
-          <article class="milestone-card" data-milestone="150">
+          <article class="milestone-card reveal-item" data-milestone="150" data-reveal>
             <h3>150</h3>
-            <p class="milestone-date" id="m-150">—</p>
+            <p class="milestone-remaining" id="m-150-remaining">—</p>
+            <p class="milestone-date" id="m-150-date">—</p>
           </article>
 
-          <article class="milestone-card" data-milestone="200">
+          <article class="milestone-card reveal-item" data-milestone="200" data-reveal>
             <h3>200</h3>
-            <p class="milestone-date" id="m-200">—</p>
+            <p class="milestone-remaining" id="m-200-remaining">—</p>
+            <p class="milestone-date" id="m-200-date">—</p>
           </article>
 
-          <article class="milestone-card" data-milestone="250">
+          <article
+            class="milestone-card milestone-card-featured reveal-item"
+            data-milestone="250"
+            data-reveal
+          >
             <h3>250</h3>
-            <p class="milestone-date" id="m-250">—</p>
+            <p class="milestone-remaining" id="m-250-remaining">—</p>
+            <p class="milestone-date" id="m-250-date">—</p>
           </article>
         </div>
       </section>
