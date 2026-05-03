@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { defineConfig } from "vite-plus";
 
-const STATIC_FILES = ["sw.js", "icons/icon-192.png", "icons/icon-512.png"];
+const STATIC_FILES = ["icons/icon-192.png", "icons/icon-512.png"];
 
 function emitStaticFiles() {
   return {
