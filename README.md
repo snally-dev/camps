@@ -10,7 +10,7 @@ Enter your current count to see progress, projected milestones, year-end pace, a
 - Milestone projections
 - Year-end pace calculation
 - Shareable snapshot (copy or share sheet)
-- Fast, offline-friendly experience
+- Fast, mobile-friendly experience
 
 ## Use
 
