@@ -1,130 +1,365 @@
-import { calculateMilestones, formatDate, daysInYear } from "./calculator.js";
+import {
+  calculateMilestones,
+  daysElapsedInYear,
+  formatDate,
+  startOfYearLocal,
+} from "./calculator.js";
+import { APP_NAME, CANONICAL_URL, MAIN_GOAL, MILESTONES } from "./config.js";
+
+const STORAGE_KEY = "camps:v1";
 
 const form = document.getElementById("milestone-form");
 const currentCountEl = document.getElementById("current-count");
-const startDateEl = document.getElementById("start-date");
+const countErrorEl = document.getElementById("count-error");
+const countUpdateFeedbackEl = document.getElementById("count-update-feedback");
 const resultsEl = document.getElementById("results");
+const incrementButton = document.getElementById("increment");
+const shareButton = document.getElementById("share-progress");
+const shareStatusEl = document.getElementById("share-status");
+const resultsSummaryEl = document.getElementById("results-summary");
+const progressTrackEl = document.querySelector(".progress-track");
+const progressFillEl = document.getElementById("progress-fill");
+const statEls = {
+  paceCurrentCamps: document.getElementById("pace-current-camps"),
+  progressPercent: document.getElementById("progress-percent"),
+  remainingTo250: document.getElementById("remaining-to-250"),
+  projectedYearEndCamps: document.getElementById("projected-year-end-camps"),
+};
+const milestoneEls = MILESTONES.map((milestone) => ({
+  milestone,
+  card: document.querySelector(`[data-milestone="${milestone}"]`),
+  remaining: document.getElementById(`m-${milestone}-remaining`),
+  date: document.getElementById(`m-${milestone}-date`),
+}));
+
+let currentShareText = "";
+let shareStatusTimer = 0;
+let countUpdateFeedbackTimer = 0;
+let hasShownResults = false;
+let ignoreNextIncrementClick = false;
 
 function isIosSafari() {
   const ua = navigator.userAgent;
   const isIOS =
     /iPhone|iPad|iPod/.test(ua) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const isWebKit = /WebKit/i.test(ua);
-  const isCriOS = /CriOS/i.test(ua);
-  const isFxiOS = /FxiOS/i.test(ua);
-  return isIOS && isWebKit && !isCriOS && !isFxiOS;
+
+  return isIOS && /WebKit/i.test(ua) && !/CriOS|FxiOS/i.test(ua);
 }
 
 function installIosKeyboardFocusAssist() {
   if (!isIosSafari()) return;
 
-  const fields = [currentCountEl, startDateEl];
-  for (const field of fields) {
-    field.addEventListener("focus", () => {
-      window.setTimeout(() => {
-        field.scrollIntoView({ block: "center", inline: "nearest" });
-      }, 250);
-    });
+  currentCountEl.addEventListener("focus", () => {
+    window.setTimeout(() => {
+      currentCountEl.scrollIntoView({ block: "center", inline: "nearest" });
+    }, 250);
+  });
+}
+
+function getNextMilestone(currentCampCount) {
+  return MILESTONES.find((milestone) => currentCampCount < milestone) ?? null;
+}
+
+function buildEmojiProgressBar(currentCampCount) {
+  const totalBlocks = 10;
+  const progress = Math.min(currentCampCount / MAIN_GOAL, 1);
+  const filledBlocks = Math.round(progress * totalBlocks);
+
+  return `${"🟩".repeat(filledBlocks)}${"⬜".repeat(totalBlocks - filledBlocks)}`;
+}
+
+function buildShareText({ currentCampCount, nextMilestone, campsRemainingToNext }) {
+  const percent = Math.round((currentCampCount / MAIN_GOAL) * 100);
+
+  const lines = [
+    `${APP_NAME} 🔥`,
+    `${currentCampCount}/${MAIN_GOAL} camps (${percent}%)`,
+    buildEmojiProgressBar(currentCampCount),
+    "",
+  ];
+
+  if (currentCampCount >= MAIN_GOAL) {
+    lines.push(`${MAIN_GOAL} reached`);
+  } else {
+    lines.push(`Next: ${nextMilestone} (${campsRemainingToNext} to go)`);
+  }
+
+  lines.push("", CANONICAL_URL);
+
+  return lines.join("\n");
+}
+
+function setText(el, value) {
+  if (el) el.textContent = value;
+}
+
+function setShareStatus(message) {
+  window.clearTimeout(shareStatusTimer);
+  shareStatusEl.textContent = message;
+
+  if (!message) return;
+
+  shareStatusTimer = window.setTimeout(() => {
+    shareStatusEl.textContent = "";
+  }, 2600);
+}
+
+function setCountError(message) {
+  countErrorEl.textContent = message;
+  currentCountEl.setCustomValidity(message);
+  currentCountEl.setAttribute("aria-invalid", message ? "true" : "false");
+}
+
+function showCountUpdateFeedback() {
+  window.clearTimeout(countUpdateFeedbackTimer);
+  countUpdateFeedbackEl.textContent = "Updated";
+
+  currentCountEl.classList.remove("is-increment-feedback");
+  void currentCountEl.offsetWidth;
+  currentCountEl.classList.add("is-increment-feedback");
+
+  countUpdateFeedbackTimer = window.setTimeout(() => {
+    countUpdateFeedbackEl.textContent = "";
+    currentCountEl.classList.remove("is-increment-feedback");
+  }, 1400);
+}
+
+function resetRevealAnimation() {
+  resultsEl.classList.remove("is-revealing");
+  void resultsEl.offsetWidth;
+  resultsEl.classList.add("is-revealing");
+}
+
+function hideResults() {
+  resultsEl.hidden = true;
+  currentShareText = "";
+  hasShownResults = false;
+}
+
+function initInputBounds() {
+  currentCountEl.max = String(daysElapsedInYear());
+}
+
+function saveCurrentCount() {
+  try {
+    if (currentCountEl.value === "") {
+      localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+
+    localStorage.setItem(STORAGE_KEY, currentCountEl.value);
+  } catch {
+    // Storage can be unavailable in some locked-down/private browser modes.
   }
 }
 
-function toDateInputValueLocal(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+function loadSavedCount() {
+  let saved = null;
+
+  try {
+    saved = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return;
+  }
+
+  if (saved !== null) {
+    currentCountEl.value = saved;
+  }
 }
 
-function parseDateInputLocal(value) {
-  const [y, m, d] = value.split("-").map(Number);
-  return new Date(y, m - 1, d);
+function renderMilestones(milestoneDates, currentCampCount) {
+  for (const { milestone, card, remaining: remainingEl, date: dateEl } of milestoneEls) {
+    if (!card || !remainingEl || !dateEl) continue;
+
+    const achieved = currentCampCount >= milestone;
+    const remaining = milestone - currentCampCount;
+    const projectedDate = milestoneDates[milestone];
+
+    card.classList.toggle("is-complete", achieved);
+
+    if (achieved) {
+      remainingEl.textContent = "✓ Achieved";
+      dateEl.textContent = "";
+      continue;
+    }
+
+    remainingEl.textContent = `${remaining} away`;
+
+    if (currentCampCount === 0) {
+      dateEl.textContent = "Add camps first";
+    } else if (projectedDate) {
+      dateEl.textContent = formatDate(projectedDate);
+    } else {
+      dateEl.textContent = "After Dec 31";
+    }
+  }
 }
 
-function startOfDayLocal(date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function initStartDatePickerAndBounds() {
+function renderResults(currentCampCount) {
   const today = new Date();
-  const year = today.getFullYear();
+  const yearStart = startOfYearLocal(today);
+  const result = calculateMilestones(currentCampCount, yearStart, today);
 
-  const startOfYear = new Date(year, 0, 1);
-  const min = toDateInputValueLocal(startOfYear);
-  const max = toDateInputValueLocal(today);
+  const progressPercent = Math.min(currentCampCount / MAIN_GOAL, 1) * 100;
+  const remainingTo250 = Math.max(MAIN_GOAL - currentCampCount, 0);
+  const nextMilestone = getNextMilestone(currentCampCount);
+  const campsRemainingToNext = nextMilestone ? nextMilestone - currentCampCount : 0;
+  const endOfYearProjection = result.endOfYearProjection;
 
-  startDateEl.min = min;
-  startDateEl.max = max;
+  setText(statEls.paceCurrentCamps, currentCampCount);
+  setText(statEls.progressPercent, `${Math.round(progressPercent)}%`);
+  setText(statEls.remainingTo250, remainingTo250);
+  setText(statEls.projectedYearEndCamps, endOfYearProjection);
 
-  startDateEl.value = min;
-  startDateEl.defaultValue = min;
+  progressFillEl.style.width = `${progressPercent}%`;
+  progressTrackEl.setAttribute("aria-valuenow", String(Math.min(currentCampCount, MAIN_GOAL)));
+  progressTrackEl.setAttribute(
+    "aria-valuetext",
+    `${currentCampCount} of ${MAIN_GOAL} camps, ${Math.round(progressPercent)} percent complete`,
+  );
 
-  currentCountEl.max = String(daysInYear(year)); // 365 or 366
-}
+  renderMilestones(result.milestoneDates, currentCampCount);
 
-function renderMilestones(milestoneDates, endOfYearProjection, averagePerWeek) {
-  for (const [milestone, dateObjOrNull] of Object.entries(milestoneDates)) {
-    const el = document.getElementById(`m-${milestone}`);
-    if (!el) continue;
-    el.textContent = dateObjOrNull ? formatDate(dateObjOrNull) : "—";
-  }
+  currentShareText = buildShareText({
+    currentCampCount,
+    nextMilestone,
+    campsRemainingToNext,
+  });
 
-  document.getElementById("average-per-week").textContent = Number.isFinite(
-    averagePerWeek,
-  )
-    ? averagePerWeek.toFixed(1)
-    : "—";
+  resultsSummaryEl.textContent = `${currentCampCount} camps this year. ${Math.round(
+    progressPercent,
+  )} percent of ${MAIN_GOAL}. Projected year-end total ${endOfYearProjection}.`;
 
-  document.getElementById("end-of-year-projection").textContent =
-    Number.isFinite(endOfYearProjection) ? `${endOfYearProjection}` : "—";
-
+  const shouldReveal = resultsEl.hidden || !hasShownResults;
   resultsEl.hidden = false;
+
+  if (shouldReveal) {
+    resetRevealAnimation();
+    hasShownResults = true;
+  }
 }
 
 function calculateAndRender() {
   const raw = currentCountEl.value;
-  const currentCount = raw === "" ? NaN : Number(raw);
+  const currentCampCount = raw === "" ? NaN : Number(raw);
+  const daysElapsedThisYear = daysElapsedInYear();
 
-  if (
-    !Number.isFinite(currentCount) ||
-    currentCount < 0 ||
-    !startDateEl.value ||
-    !currentCountEl.validity.valid ||
-    !startDateEl.validity.valid
-  ) {
-    resultsEl.hidden = true;
+  setShareStatus("");
+  setCountError("");
+
+  if (!Number.isInteger(currentCampCount) || currentCampCount < 0) {
+    hideResults();
+
+    if (raw !== "") {
+      setCountError("Enter a whole number of camps.");
+    }
+
     return;
   }
 
-  const startDate = parseDateInputLocal(startDateEl.value);
-  const today = startOfDayLocal(new Date());
-
-  if (startDate > today) {
-    resultsEl.hidden = true;
+  if (currentCampCount > daysElapsedThisYear) {
+    hideResults();
+    setCountError(
+      `That is more than the ${daysElapsedThisYear} days elapsed this year. Count up to 1 camp per day.`,
+    );
     return;
   }
 
-  const result = calculateMilestones(currentCount, startDate, today);
+  if (!currentCountEl.validity.valid) {
+    hideResults();
+    setCountError("Enter a valid camp count for this year.");
+    return;
+  }
 
-  renderMilestones(
-    result.milestoneDates,
-    result.endOfYearProjection,
-    result.averagePerWeek,
-  );
+  renderResults(currentCampCount);
 }
 
-currentCountEl.addEventListener("input", calculateAndRender);
-startDateEl.addEventListener("input", calculateAndRender);
-
-form.addEventListener("submit", (e) => {
-  e.preventDefault();
+function handleCountInput() {
+  saveCurrentCount();
   calculateAndRender();
-});
+}
 
-form.addEventListener("reset", () => {
-  resultsEl.hidden = true;
-  initStartDatePickerAndBounds();
-});
+function incrementCurrentCount() {
+  const val = Number(currentCountEl.value || 0) + 1;
+  currentCountEl.value = val;
+  handleCountInput();
 
-initStartDatePickerAndBounds();
-installIosKeyboardFocusAssist();
+  if (!countErrorEl.textContent) {
+    showCountUpdateFeedback();
+  }
+}
+
+async function copyShareText() {
+  await navigator.clipboard.writeText(currentShareText);
+  setShareStatus("Progress copied.");
+}
+
+async function shareProgress() {
+  if (!currentShareText) return;
+
+  try {
+    if (navigator.share) {
+      await navigator.share({ text: currentShareText });
+      setShareStatus("Progress shared.");
+      return;
+    }
+
+    await copyShareText();
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+
+    try {
+      await copyShareText();
+    } catch {
+      setShareStatus("Sharing is unavailable in this browser.");
+    }
+  }
+}
+
+function registerServiceWorker() {
+  const canUseServiceWorker =
+    window.location.protocol === "https:" && window.location.pathname.startsWith("/camps/");
+
+  if (!canUseServiceWorker || !("serviceWorker" in navigator)) return;
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/camps/sw.js", { scope: "/camps/" }).catch(() => {});
+  });
+}
+
+function init() {
+  initInputBounds();
+  loadSavedCount();
+  calculateAndRender();
+
+  currentCountEl.addEventListener("input", handleCountInput);
+  shareButton.addEventListener("click", shareProgress);
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    calculateAndRender();
+  });
+
+  incrementButton.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+      ignoreNextIncrementClick = true;
+      incrementCurrentCount();
+    }
+  });
+
+  incrementButton.addEventListener("click", () => {
+    if (ignoreNextIncrementClick) {
+      ignoreNextIncrementClick = false;
+      return;
+    }
+
+    incrementCurrentCount();
+  });
+
+  installIosKeyboardFocusAssist();
+  registerServiceWorker();
+}
+
+init();
