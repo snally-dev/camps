@@ -14,7 +14,6 @@
     "url": "git+https://github.com/snally-dev/camps.git"
   },
   "type": "module",
-  "main": "sw.js",
   "scripts": {
     "dev": "vp dev",
     "build": "vp build",
