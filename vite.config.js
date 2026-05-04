@@ -40,8 +40,8 @@ export default defineConfig({
           if (assetName === "favicon.ico") return "favicon.ico";
           if (assetName === "icon-180.png") return "icons/icon-180.png";
           if (assetName.endsWith(".css")) return "css/styles.css";
-          if (assetName === "camp-milestones-logo.png") {
-            return "assets/camp-milestones-logo.png";
+          if (assetName === "camps-logo.png") {
+            return "assets/camps-logo.png";
           }
 
           return "assets/[name][extname]";
