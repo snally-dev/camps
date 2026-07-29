@@ -1,6 +1,7 @@
-import { MILESTONES } from "./config.js";
+import { MAIN_GOAL, MILESTONES } from "./config.js";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const SCENARIO_WEEKS = [4, 5, 6, 7];
 
 function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n));
@@ -21,7 +22,7 @@ function startOfDayLocal(date) {
 }
 
 export function daysInYear(year) {
-  // Feb 29 exists if leap year
+  // Feb 29 exists if leap year.
   return new Date(year, 1, 29).getMonth() === 1 ? 366 : 365;
 }
 
@@ -30,13 +31,7 @@ export function startOfYearLocal(today = new Date()) {
   return new Date(now.getFullYear(), 0, 1);
 }
 
-export function daysElapsedInYear(today = new Date()) {
-  const now = startOfDayLocal(today);
-  return inclusiveElapsedDays(startOfYearLocal(now), now);
-}
-
 function endOfYearLocal(year) {
-  // date-only (start of Dec 31)
   return new Date(year, 11, 31);
 }
 
@@ -45,69 +40,107 @@ function addDaysLocal(date, days) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
 }
 
+function inclusiveElapsedDays(startDate, today) {
+  const startN = dayNumberLocal(startDate);
+  const todayN = dayNumberLocal(today);
+  return Math.max(1, todayN - startN + 1);
+}
+
+export function daysElapsedInYear(today = new Date()) {
+  const now = startOfDayLocal(today);
+  return inclusiveElapsedDays(startOfYearLocal(now), now);
+}
+
+function daysRemainingAfterToday(today) {
+  const now = startOfDayLocal(today);
+  return Math.max(0, dayNumberLocal(endOfYearLocal(now.getFullYear())) - dayNumberLocal(now));
+}
+
 function emptyMilestoneDates() {
   return Object.fromEntries(MILESTONES.map((target) => [target, null]));
 }
 
-function inclusiveElapsedDays(startDate, today) {
-  const startN = dayNumberLocal(startDate);
-  const todayN = dayNumberLocal(today);
-  // inclusive: Jan 1 to Jan 1 => 1 day
-  return Math.max(1, todayN - startN + 1);
-}
+function getFutureDateForTarget({ currentCount, target, dailyRate, today }) {
+  if (currentCount >= target || !(dailyRate > 0)) return null;
 
-/**
- * Daily rate is capped at 1 camp/day.
- */
-function ratePerDay(currentCount, startDate, today) {
-  const elapsedDays = inclusiveElapsedDays(startDate, today);
-  const raw = currentCount / elapsedDays;
-  return clamp(raw, 0, 1);
-}
-
-function milestoneDate({ target, currentCount, dailyRate, startDate, today }) {
-  if (!(dailyRate > 0)) return null;
-
-  const year = startDate.getFullYear();
-  const eoy = endOfYearLocal(year);
-  const eoyN = dayNumberLocal(eoy);
-
-  // If already reached, estimate the day it was reached based on the same pace so far.
-  if (currentCount >= target) {
-    // If you earn ~dailyRate camps/day from start date,
-    // the nth camp lands on: start + (ceil(n / rate) - 1) days.
-    const daysFromStart = Math.ceil(target / dailyRate) - 1;
-    const reached = addDaysLocal(startDate, Math.max(0, daysFromStart));
-
-    // Guardrails: keep within the same year and not after today.
-    if (dayNumberLocal(reached) > dayNumberLocal(today)) return startOfDayLocal(today);
-    if (dayNumberLocal(reached) > eoyN) return null;
-    return reached;
-  }
-
-  // Not reached yet: project forward from TODAY.
   const remaining = target - currentCount;
-
-  // With currentCount assumed to include today's camp (if any),
-  // the soonest additional camp is tomorrow -> +1 day when remaining=1 and dailyRate=1.
   const daysNeeded = Math.ceil(remaining / dailyRate);
   const projected = addDaysLocal(today, daysNeeded);
+  const yearEnd = endOfYearLocal(today.getFullYear());
 
-  return dayNumberLocal(projected) > eoyN ? null : projected;
+  return dayNumberLocal(projected) <= dayNumberLocal(yearEnd) ? projected : null;
 }
 
-function endOfYearProjection(currentCount, dailyRate, today) {
-  const y = today.getFullYear();
-  const eoy = endOfYearLocal(y);
+function getYearEndProjection({ currentCount, dailyRate, remainingDays, year }) {
+  const projected = currentCount + dailyRate * remainingDays;
+  return clamp(Math.floor(projected), 0, daysInYear(year));
+}
 
-  const todayN = dayNumberLocal(today);
-  const eoyN = dayNumberLocal(eoy);
+function calculateWeeklyScenario({ currentCount, target, weeklyRate, today, remainingDays }) {
+  const dailyRate = weeklyRate / 7;
+  const yearEndTotal = getYearEndProjection({
+    currentCount,
+    dailyRate,
+    remainingDays,
+    year: today.getFullYear(),
+  });
+  const targetDate = getFutureDateForTarget({
+    currentCount,
+    target,
+    dailyRate,
+    today,
+  });
+  const reached = currentCount >= target || yearEndTotal >= target;
 
-  // Remaining days after today (if today's camp is already counted in currentCount)
-  const daysRemaining = Math.max(0, eoyN - todayN);
+  return {
+    label: `${weeklyRate} per week`,
+    type: "weekly-average",
+    weeklyRate,
+    dailyRate,
+    yearEndTotal,
+    targetDate,
+    reachesTarget: reached,
+    shortfall: Math.max(0, target - yearEndTotal),
+  };
+}
 
-  const projected = currentCount + dailyRate * daysRemaining;
-  return clamp(Math.floor(projected), 0, daysInYear(y));
+function calculateMilestoneDetail({
+  target,
+  currentCount,
+  currentDailyRate,
+  currentWeeklyRate,
+  today,
+  remainingDays,
+}) {
+  const achieved = currentCount >= target;
+  const currentPaceDate = getFutureDateForTarget({
+    currentCount,
+    target,
+    dailyRate: currentDailyRate,
+    today,
+  });
+
+  const scenarios = Object.fromEntries(
+    SCENARIO_WEEKS.map((weeklyRate) => [
+      weeklyRate,
+      calculateWeeklyScenario({
+        currentCount,
+        target,
+        weeklyRate,
+        today,
+        remainingDays,
+      }),
+    ]),
+  );
+
+  return {
+    target,
+    achieved,
+    remaining: Math.max(0, target - currentCount),
+    currentPaceDate,
+    currentWeeklyRate,
+    scenarios,
+  };
 }
 
 const DATE_FMT = new Intl.DateTimeFormat("en-US", {
@@ -116,8 +149,131 @@ const DATE_FMT = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
+const SHORT_DATE_FMT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+});
+
 export function formatDate(date) {
   return DATE_FMT.format(date);
+}
+
+export function formatShortDate(date) {
+  return SHORT_DATE_FMT.format(date);
+}
+
+export function calculateCampProgress(currentCount, today = new Date(), goal = MAIN_GOAL) {
+  const now = startOfDayLocal(today);
+  const year = now.getFullYear();
+  const yearStart = startOfYearLocal(now);
+  const yearEnd = endOfYearLocal(year);
+  const elapsedDays = daysElapsedInYear(now);
+  const remainingDays = daysRemainingAfterToday(now);
+  const remainingToGoal = Math.max(0, goal - currentCount);
+  const currentDailyRate = clamp(currentCount / elapsedDays, 0, 1);
+  const currentWeeklyRate = currentDailyRate * 7;
+  const currentYearEndProjection = getYearEndProjection({
+    currentCount,
+    dailyRate: currentDailyRate,
+    remainingDays,
+    year,
+  });
+  const requiredDailyRate =
+    remainingToGoal === 0 ? 0 : remainingDays > 0 ? remainingToGoal / remainingDays : Infinity;
+  const requiredWeeklyRate = requiredDailyRate * 7;
+  const maximumPossibleYearEndCount = currentCount + remainingDays;
+  const isGoalReached = currentCount >= goal;
+  const isGoalReachable = remainingToGoal <= remainingDays;
+  const remainingRestDays = remainingDays - remainingToGoal;
+  const currentPaceGoalDate = getFutureDateForTarget({
+    currentCount,
+    target: goal,
+    dailyRate: currentDailyRate,
+    today: now,
+  });
+
+  const fourPerWeek = calculateWeeklyScenario({
+    currentCount,
+    target: goal,
+    weeklyRate: 4,
+    today: now,
+    remainingDays,
+  });
+  const fivePerWeek = calculateWeeklyScenario({
+    currentCount,
+    target: goal,
+    weeklyRate: 5,
+    today: now,
+    remainingDays,
+  });
+  const sixPerWeek = calculateWeeklyScenario({
+    currentCount,
+    target: goal,
+    weeklyRate: 6,
+    today: now,
+    remainingDays,
+  });
+  const sevenPerWeek = calculateWeeklyScenario({
+    currentCount,
+    target: goal,
+    weeklyRate: 7,
+    today: now,
+    remainingDays,
+  });
+
+  const milestones = MILESTONES.map((target) =>
+    calculateMilestoneDetail({
+      target,
+      currentCount,
+      currentDailyRate,
+      currentWeeklyRate,
+      today: now,
+      remainingDays,
+    }),
+  );
+
+  return {
+    year,
+    yearStart,
+    yearEnd,
+    daysInYear: daysInYear(year),
+    daysElapsed: elapsedDays,
+    daysRemainingAfterToday: remainingDays,
+    currentCount,
+    goal,
+    remainingToGoal,
+    currentDailyRate,
+    currentWeeklyRate,
+    currentYearEndProjection,
+    requiredDailyRate,
+    requiredWeeklyRate,
+    maximumPossibleYearEndCount,
+    isGoalReached,
+    isGoalReachable,
+    remainingRestDays,
+    currentPaceGoalDate,
+    scenarios: {
+      currentPace: {
+        label: "At your current pace",
+        type: "year-to-date-average",
+        weeklyRate: currentWeeklyRate,
+        dailyRate: currentDailyRate,
+        yearEndTotal: currentYearEndProjection,
+        targetDate: currentPaceGoalDate,
+        reachesTarget: isGoalReached || currentYearEndProjection >= goal,
+        shortfall: Math.max(0, goal - currentYearEndProjection),
+      },
+      fourPerWeek,
+      fivePerWeek,
+      sixPerWeek,
+      sevenPerWeek,
+    },
+    milestones,
+    milestoneDates: Object.fromEntries(
+      milestones.map(({ target, currentPaceDate }) => [target, currentPaceDate]),
+    ),
+    endOfYearProjection: currentYearEndProjection,
+  };
 }
 
 export function calculateMilestones(currentCount, startDate, today = new Date()) {
@@ -131,23 +287,5 @@ export function calculateMilestones(currentCount, startDate, today = new Date())
     };
   }
 
-  const dailyRate = ratePerDay(currentCount, start, now);
-
-  const milestoneDates = Object.fromEntries(
-    MILESTONES.map((target) => [
-      target,
-      milestoneDate({
-        target,
-        currentCount,
-        dailyRate,
-        startDate: start,
-        today: now,
-      }),
-    ]),
-  );
-
-  return {
-    milestoneDates,
-    endOfYearProjection: endOfYearProjection(currentCount, dailyRate, now),
-  };
+  return calculateCampProgress(currentCount, now);
 }

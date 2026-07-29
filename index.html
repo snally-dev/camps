@@ -23,12 +23,12 @@
         <img class="logo" src="assets/camps-logo.png" alt="Camp" width="600" height="268" />
         <div class="hero-copy stack">
           <h1 class="visually-hidden">Camp</h1>
-          <p class="hero-subtitle">Track your camps and milestones.</p>
+          <p class="hero-subtitle">Track your year.</p>
         </div>
       </header>
 
       <form id="milestone-form" class="camp-entry" novalidate>
-        <label class="camp-entry__label" for="current-count">Your camps</label>
+        <label class="camp-entry__label" for="current-count">Camps</label>
 
         <div class="camp-entry__control">
           <input
@@ -56,15 +56,15 @@
         <p class="count-update-feedback" id="count-update-feedback"></p>
       </form>
 
-      <section id="results" class="is-hidden">
+      <section id="results" class="results is-hidden">
         <p id="results-summary" class="visually-hidden" role="status" aria-live="polite"></p>
         <div class="pace-card reveal-item" data-reveal>
           <div class="pace-card-header">
             <div>
               <p class="eyebrow">Progress</p>
-              <h2>Annual Camp Progress</h2>
+              <h2>To 250</h2>
             </div>
-            <p class="pace-count"><span id="pace-current-camps">—</span>/250</p>
+            <p class="pace-count"><span id="pace-current-camps">-</span> of 250</p>
           </div>
 
           <div
@@ -80,26 +80,98 @@
 
           <div class="pace-metrics">
             <div>
+              <span>Left</span>
+              <strong id="remaining-to-250">-</strong>
+            </div>
+            <div>
               <span>Progress</span>
-              <strong id="progress-percent">—</strong>
+              <strong id="progress-percent">-</strong>
             </div>
             <div>
-              <span>To 250</span>
-              <strong id="remaining-to-250">—</strong>
+              <span>Mean rate</span>
+              <strong id="observed-weekly-rate">-</strong>
             </div>
             <div>
-              <span>Projected</span>
-              <strong id="projected-year-end-camps">—</strong>
+              <span>Projected EOY</span>
+              <strong id="projected-year-end-camps">-</strong>
             </div>
           </div>
         </div>
 
-        <div class="export-panel">
+        <article class="required-card reveal-item" data-reveal>
+          <div>
+            <p class="eyebrow">Needed</p>
+            <h2 id="required-headline">-</h2>
+            <p id="required-recommendation" class="required-recommendation">-</p>
+          </div>
+          <div class="required-grid">
+            <div>
+              <span>Camps left</span>
+              <strong id="required-camps">-</strong>
+            </div>
+            <div>
+              <span>Days left</span>
+              <strong id="required-days">-</strong>
+            </div>
+            <div>
+              <span>Per week</span>
+              <strong id="required-weekly">-</strong>
+            </div>
+            <div id="rest-days-block">
+              <span>Rest days</span>
+              <strong id="required-rest-days">-</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="status-card reveal-item" data-reveal>
+          <p class="eyebrow">Pace</p>
+          <h2 id="status-headline">-</h2>
+          <p id="status-body">-</p>
+          <p id="status-note" class="small-note">-</p>
+        </article>
+
+        <section class="scenario-panel reveal-item" aria-labelledby="scenario-heading" data-reveal>
+          <div class="section-heading-row">
+            <div>
+              <p class="eyebrow">Plans</p>
+              <h2 id="scenario-heading">From tomorrow</h2>
+            </div>
+          </div>
+
+          <div class="scenario-list">
+            <article class="scenario-row" data-scenario="four">
+              <p class="scenario-label">4/wk</p>
+              <strong id="scenario-four-primary">-</strong>
+              <span id="scenario-four-detail">-</span>
+            </article>
+
+            <article class="scenario-row" data-scenario="five">
+              <p class="scenario-label">5/wk</p>
+              <strong id="scenario-five-primary">-</strong>
+              <span id="scenario-five-detail">-</span>
+            </article>
+
+            <article class="scenario-row" data-scenario="six">
+              <p class="scenario-label">6/wk</p>
+              <strong id="scenario-six-primary">-</strong>
+              <span id="scenario-six-detail">-</span>
+            </article>
+
+            <article class="scenario-row" id="scenario-seven-row" data-scenario="seven">
+              <p class="scenario-label">7/wk</p>
+              <strong id="scenario-seven-primary">-</strong>
+              <span id="scenario-seven-detail">-</span>
+            </article>
+          </div>
+        </section>
+
+        <div class="export-panel reveal-item" data-reveal>
           <button
             type="button"
             id="copy-progress"
             class="export-button"
-            aria-label="Copy or send your camp progress"
+            aria-label="Share Camp progress"
           >
             Share
           </button>
@@ -107,43 +179,84 @@
         </div>
 
         <div class="divider"></div>
-        <h2 class="milestone-heading">Milestone Path</h2>
+        <h2 class="milestone-heading">Milestones</h2>
 
         <div class="milestone-grid">
-          <article class="milestone-card reveal-item" data-milestone="50" data-reveal>
-            <h3>50</h3>
-            <p class="milestone-remaining" id="m-50-remaining">—</p>
-            <p class="milestone-date" id="m-50-date">—</p>
-          </article>
+          <details class="milestone-card reveal-item" data-milestone="50" data-reveal>
+            <summary>
+              <span class="milestone-number">50</span>
+              <span>
+                <strong id="m-50-status">-</strong>
+                <span id="m-50-date">-</span>
+              </span>
+            </summary>
+            <div class="milestone-detail" id="m-50-detail"></div>
+          </details>
 
-          <article class="milestone-card reveal-item" data-milestone="100" data-reveal>
-            <h3>100</h3>
-            <p class="milestone-remaining" id="m-100-remaining">—</p>
-            <p class="milestone-date" id="m-100-date">—</p>
-          </article>
+          <details class="milestone-card reveal-item" data-milestone="100" data-reveal>
+            <summary>
+              <span class="milestone-number">100</span>
+              <span>
+                <strong id="m-100-status">-</strong>
+                <span id="m-100-date">-</span>
+              </span>
+            </summary>
+            <div class="milestone-detail" id="m-100-detail"></div>
+          </details>
 
-          <article class="milestone-card reveal-item" data-milestone="150" data-reveal>
-            <h3>150</h3>
-            <p class="milestone-remaining" id="m-150-remaining">—</p>
-            <p class="milestone-date" id="m-150-date">—</p>
-          </article>
+          <details class="milestone-card reveal-item" data-milestone="150" data-reveal>
+            <summary>
+              <span class="milestone-number">150</span>
+              <span>
+                <strong id="m-150-status">-</strong>
+                <span id="m-150-date">-</span>
+              </span>
+            </summary>
+            <div class="milestone-detail" id="m-150-detail"></div>
+          </details>
 
-          <article class="milestone-card reveal-item" data-milestone="200" data-reveal>
-            <h3>200</h3>
-            <p class="milestone-remaining" id="m-200-remaining">—</p>
-            <p class="milestone-date" id="m-200-date">—</p>
-          </article>
+          <details class="milestone-card reveal-item" data-milestone="200" data-reveal>
+            <summary>
+              <span class="milestone-number">200</span>
+              <span>
+                <strong id="m-200-status">-</strong>
+                <span id="m-200-date">-</span>
+              </span>
+            </summary>
+            <div class="milestone-detail" id="m-200-detail"></div>
+          </details>
 
-          <article
+          <details
             class="milestone-card milestone-card-featured reveal-item"
             data-milestone="250"
             data-reveal
           >
-            <h3>250</h3>
-            <p class="milestone-remaining" id="m-250-remaining">—</p>
-            <p class="milestone-date" id="m-250-date">—</p>
-          </article>
+            <summary>
+              <span class="milestone-number">250</span>
+              <span>
+                <strong id="m-250-status">-</strong>
+                <span id="m-250-date">-</span>
+              </span>
+            </summary>
+            <div class="milestone-detail" id="m-250-detail"></div>
+          </details>
         </div>
+
+        <details class="calculation-details reveal-item" data-reveal>
+          <summary>Math</summary>
+          <div class="calculation-copy">
+            <p id="calculation-explanation">-</p>
+            <p id="mean-rate-explanation">-</p>
+            <p id="projection-explanation">-</p>
+            <p id="required-rate-explanation">-</p>
+            <p>
+              R mental model: distinct Camp dates, summarise the YTD mean, then mutate the EOY
+              projection.
+            </p>
+            <p>Your count includes today. Future math starts tomorrow.</p>
+            <p>Reset: Jan 1. Limit: 1 Camp/day.</p>
+          </div>
+        </details>
       </section>
 
       <script type="module" src="js/main.js"></script>

@@ -1,22 +1,24 @@
 # Camps
 
-A simple, mobile-first app for tracking annual camp progress toward a 250-camp goal.
+Mobile Camp progress toward 250.
 
-Enter your current count to see progress, projected milestones, year-end pace, and a clean, shareable snapshot.
+Enter one count. See pace, need, plans, and share text.
 
 ## Features
 
-- 250-camp progress tracking
-- Milestone projections
-- Year-end pace calculation
-- Shareable snapshot (copy or share sheet)
-- Fast, mobile-friendly experience
+- 250-Camp progress
+- Mean-rate and projected EOY math
+- Needed weekly pace
+- 4/wk, 5/wk, and 6/wk plans
+- Milestones: 50, 100, 150, 200, 250
+- Share sheet plus clipboard fallback
+- Mobile-first UI
 
 ## Use
 
 https://snally.com/camps/
 
-Works well when added to your home screen on iPhone.
+Works well on iPhone home screen.
 
 ## Local Development
 
@@ -60,10 +62,18 @@ base: "/camps/";
 
 ## Notes
 
-- The tracking year runs January 1 through December 31
-- Pace is based on elapsed days in the year, including today
-- Pace is capped at 1 camp per day
-- Milestones are projected from current pace
+- Year: Jan 1-Dec 31.
+- Reset: Jan 1.
+- Count includes today.
+- Future math starts tomorrow.
+- Limit: 1 Camp/day.
+- Mean rate is `Camps / elapsed days`, shown as Camps/week.
+- Projected EOY is `floor(count + mean rate * days left)`.
+- Required pace is `Camps left / days left`, shown as Camps/week.
+- Think tidyverse: distinct dates, summarise the YTD mean, mutate the EOY projection.
+- 4/wk, 5/wk, and 6/wk dates are estimates.
+- Share text includes progress, need, 6/wk, and link.
+- Shared links may include `?count=145`; they do not overwrite local saved counts.
 
 ---
 
